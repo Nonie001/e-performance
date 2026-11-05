@@ -3,6 +3,7 @@ const HR_SPREADSHEET_ID = "1UM2iyWr7qWVyezCVtAiwxXb__O7LRmEirWQd3isb3fo";
 const CREDENTIALS_SHEET = "UserCredentials";
 const HIERARCHY_SHEET = "Hierarchy for evaluate";
 const ROUND_TWO_SCORE_SHEET = "บันทึกการประเมิน";
+const ROUND_TWO_RECORD_SHEET = "Score record";
 
 function doPost(e) {
   try {
@@ -196,33 +197,47 @@ function getRoundTwoScores(hierarchySheet, supervisorId, reportIds) {
   }
   if (!matchingFileId) return null;
 
-  const sheet = SpreadsheetApp.openById(matchingFileId).getSheetByName(ROUND_TWO_SCORE_SHEET);
-  if (!sheet || sheet.getLastRow() < 2) return null;
-  const headers = sheet.getRange(2, 2, 1, 3).getDisplayValues()[0];
-  if (headers[0] !== "ID" || headers[1] !== "คะแนนประเมินตนเอง" ||
-      headers[2] !== "คะแนนประเมินโดยหัวหน้างาน") return null;
-
+  const spreadsheet = SpreadsheetApp.openById(matchingFileId);
   const wanted = new Set(reportIds.map(normalizeEmployeeId));
   const results = {};
-  if (sheet.getLastRow() < 3) return results;
+  let foundSource = false;
+
+  // Some supervisor files leave บันทึกการประเมิน empty while Score record
+  // contains completed results. Read records first; newer log entries override.
+  const record = spreadsheet.getSheetByName(ROUND_TWO_RECORD_SHEET);
+  if (record && record.getLastRow() >= 2 &&
+      record.getRange(2, 1).getDisplayValue() === "ID") {
+    foundSource = true;
+    mergeRoundTwoScores(record, 1, wanted, results);
+  }
+
+  const log = spreadsheet.getSheetByName(ROUND_TWO_SCORE_SHEET);
+  if (log && log.getLastRow() >= 2) {
+    const headers = log.getRange(2, 2, 1, 3).getDisplayValues()[0];
+    if (headers[0] === "ID" && headers[1] === "คะแนนประเมินตนเอง" &&
+        headers[2] === "คะแนนประเมินโดยหัวหน้างาน") {
+      foundSource = true;
+      mergeRoundTwoScores(log, 2, wanted, results);
+    }
+  }
+  return foundSource ? results : null;
+}
+
+function mergeRoundTwoScores(sheet, idColumn, wanted, results) {
+  if (sheet.getLastRow() < 3) return;
   const count = sheet.getLastRow() - 2;
-  const ids = sheet.getRange(3, 2, count, 1).getDisplayValues();
-  const scores = sheet.getRange(3, 3, count, 2).getValues();
-  const duplicates = new Set();
+  const ids = sheet.getRange(3, idColumn, count, 1).getDisplayValues();
+  const scores = sheet.getRange(3, idColumn + 1, count, 2).getValues();
   for (let index = 0; index < count; index += 1) {
     const id = normalizeEmployeeId(ids[index][0]);
     if (!wanted.has(id)) continue;
-    if (Object.prototype.hasOwnProperty.call(results, id)) {
-      duplicates.add(id);
-      continue;
-    }
-    results[id] = {
-      self: numericScore(scores[index][0]),
-      supervisor: numericScore(scores[index][1]),
-    };
+    const self = numericScore(scores[index][0]);
+    const supervisor = numericScore(scores[index][1]);
+    if (self === null && supervisor === null) continue;
+    if (!results[id]) results[id] = { self: null, supervisor: null };
+    if (self !== null) results[id].self = self;
+    if (supervisor !== null) results[id].supervisor = supervisor;
   }
-  for (const id of duplicates) delete results[id];
-  return results;
 }
 
 function buildPrefilledFormUrl(displayRow, rawRow) {
