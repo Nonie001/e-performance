@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Internal Google Sheets links, including per-supervisor evaluation files
+/docs/SHEET_LINKS.local.md
