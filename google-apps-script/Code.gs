@@ -26,6 +26,10 @@ function doPost(e) {
       return getSupervisorDashboard(request);
     }
 
+    if (request.action === "getSupervisorReview") {
+      return getSupervisorReview(request);
+    }
+
     if (request.action === "changePassword") {
       return changePassword(request);
     }
@@ -120,10 +124,43 @@ function getProfile(request) {
 }
 
 function getSupervisorDashboard(request) {
+  return jsonResponse(loadSupervisorDashboard(request));
+}
+
+function getSupervisorReview(request) {
+  const targetId = normalizeEmployeeId(request.targetEmployeeId);
+  if (!targetId) return jsonResponse({ success: false, message: "Invalid employee" });
+
+  const dashboard = loadSupervisorDashboard(request);
+  if (!dashboard.success) return jsonResponse(dashboard);
+
+  const matches = dashboard.reports.filter((report) => normalizeEmployeeId(report.employeeId) === targetId);
+  if (matches.length !== 1) return jsonResponse({ success: false, message: "Report not found" });
+
+  let hrScoreDetails = null;
+  try {
+    hrScoreDetails = getHrScoreDetails(matches[0].employeeId);
+  } catch (error) {
+    console.error("Supervisor HR score lookup failed", error);
+  }
+
+  return jsonResponse({
+    success: true,
+    report: matches[0],
+    scoreSourceAvailable: dashboard.scoreSourceAvailable,
+    hrScore: hrScoreDetails ? hrScoreDetails.total : null,
+    hrFullScore: hrScoreDetails ? hrScoreDetails.fullScore : null,
+    hrPastPerformanceScore: hrScoreDetails ? hrScoreDetails.pastPerformanceScore : null,
+    hrScoreBreakdown: hrScoreDetails ? hrScoreDetails.breakdown : null,
+    hrScoreMaximums: hrScoreDetails ? hrScoreDetails.maximums : null,
+  });
+}
+
+function loadSupervisorDashboard(request) {
   const employeeId = String(request.employeeId || "").trim();
   const rowNumber = Number(request.rowNumber);
   if (!employeeId || !Number.isInteger(rowNumber) || rowNumber < 2) {
-    return jsonResponse({ success: false, message: "Invalid employee" });
+    return { success: false, message: "Invalid employee" };
   }
 
   // Only a signed-in account may request its own direct reports. The Next.js
@@ -131,7 +168,7 @@ function getSupervisorDashboard(request) {
   const credentials = getCredentialsSheet();
   if (rowNumber > credentials.getLastRow() ||
       String(credentials.getRange(rowNumber, 1).getDisplayValue()).trim() !== employeeId) {
-    return jsonResponse({ success: false, message: "Account not found" });
+    return { success: false, message: "Account not found" };
   }
 
   const sheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(HIERARCHY_SHEET);
@@ -179,7 +216,7 @@ function getSupervisorDashboard(request) {
     }
   }
 
-  return jsonResponse({ success: true, isSupervisor: reports.length > 0, scoreSourceAvailable, reports });
+  return { success: true, isSupervisor: reports.length > 0, scoreSourceAvailable, reports };
 }
 
 function getRoundTwoScores(hierarchySheet, supervisorId, reportIds) {

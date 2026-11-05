@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import type { SupervisorReport } from "@/lib/apps-script";
 import styles from "./supervisor-team.module.css";
 
@@ -52,6 +53,7 @@ export default function SupervisorTeam({ reports, scoreSourceAvailable }: { repo
                 </strong>
               </div>
               <div className={styles.action}>
+                <Link href={`/supervisor/review/${encodeURIComponent(report.employeeId)}`}>ตรวจทานข้อมูล</Link>
                 {report.evaluationUrl ? (
                   <a href={report.evaluationUrl} target="_blank" rel="noopener noreferrer">ดูเอกสารประเมิน <span aria-hidden="true">↗</span></a>
                 ) : <span>ยังไม่มีลิงก์ประเมิน</span>}

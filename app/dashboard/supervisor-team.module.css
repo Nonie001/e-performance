@@ -16,11 +16,11 @@
 .scores div { display: grid; gap: 2px; }
 .scores span { color: #6b8390; font-size: .73rem; white-space: nowrap; }
 .scores strong { color: #0e638c; font-size: 1.2rem; line-height: 1.2; }
-.footer { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex: 0 0 290px; }
+.footer { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex: 0 0 330px; }
 .status { flex: 0 0 105px; }
 .status strong { display: inline-block; padding: 6px 9px; border-radius: 7px; color: #946a20; background: #fff5df; font-size: .75rem; font-weight: 700; white-space: nowrap; }
 .status strong.complete { color: #13775f; background: #e5f5ee; }
-.action { flex: 0 0 165px; text-align: right; }
+.action { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; flex: 0 0 205px; text-align: right; }
 .action a { display: inline-flex; gap: 5px; align-items: center; justify-content: center; min-height: 35px; padding: 7px 11px; border-radius: 8px; color: #fff; background: #0e638c; font-size: .77rem; font-weight: 700; text-decoration: none; }
 .action a:hover { background: #084d70; }
 .action a:focus-visible { outline: 3px solid #0e638c; outline-offset: 3px; }

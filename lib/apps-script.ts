@@ -25,6 +25,7 @@ type AppsScriptResponse = {
   isSupervisor?: boolean;
   scoreSourceAvailable?: boolean;
   reports?: unknown;
+  report?: unknown;
 };
 
 function getConfiguration() {
@@ -126,6 +127,70 @@ export type SupervisorDashboard = {
   scoreSourceAvailable: boolean;
   reports: SupervisorReport[];
 };
+
+export type SupervisorReview = {
+  report: SupervisorReport;
+  scoreSourceAvailable: boolean;
+  hrScore: number | null;
+  hrFullScore: number | null;
+  hrPastPerformanceScore: number | null;
+  hrScoreBreakdown: EmployeeProfile["hrScoreBreakdown"];
+  hrScoreMaximums: EmployeeProfile["hrScoreMaximums"];
+};
+
+function normalizeEmployeeId(value: string) {
+  return /^\d+$/.test(value) ? value.padStart(6, "0") : value;
+}
+
+export async function getSupervisorReview(
+  employeeId: string,
+  rowNumber: number,
+  targetEmployeeId: string,
+): Promise<SupervisorReview | null> {
+  const result = await callAppsScript({ action: "getSupervisorReview", employeeId, rowNumber, targetEmployeeId });
+  if (!result.success && result.message === "Report not found") return null;
+  if (!result.success || !result.report || typeof result.report !== "object") {
+    throw new AppsScriptRequestError("ไม่สามารถโหลดข้อมูลตรวจทานได้");
+  }
+
+  const row = result.report as Record<string, unknown>;
+  if (["employeeId", "firstName", "lastName", "department", "project", "position"].some(
+    (key) => typeof row[key] !== "string",
+  ) || normalizeEmployeeId(row.employeeId as string) !== normalizeEmployeeId(targetEmployeeId)) {
+    throw new AppsScriptRequestError("ข้อมูลพนักงานไม่ถูกต้อง");
+  }
+
+  return {
+    report: {
+      employeeId: row.employeeId as string,
+      firstName: row.firstName as string,
+      lastName: row.lastName as string,
+      department: row.department as string,
+      project: row.project as string,
+      position: row.position as string,
+      evaluationUrl: validEvaluationUrl(row.evaluationUrl),
+      selfEvaluationScore: validScore(row.selfEvaluationScore),
+      supervisorEvaluationScore: validScore(row.supervisorEvaluationScore),
+    },
+    scoreSourceAvailable: result.scoreSourceAvailable === true,
+    hrScore: validScore(result.hrScore),
+    hrFullScore: validScore(result.hrFullScore),
+    hrPastPerformanceScore: validScore(result.hrPastPerformanceScore),
+    hrScoreBreakdown: result.hrScoreBreakdown ? {
+      training: validScore(result.hrScoreBreakdown.training),
+      leave: validScore(result.hrScoreBreakdown.leave),
+      warning: validScore(result.hrScoreBreakdown.warning),
+      meeting: validScore(result.hrScoreBreakdown.meeting),
+      health: validScore(result.hrScoreBreakdown.health),
+    } : null,
+    hrScoreMaximums: result.hrScoreMaximums ? {
+      training: validScore(result.hrScoreMaximums.training),
+      leave: validScore(result.hrScoreMaximums.leave),
+      warning: validScore(result.hrScoreMaximums.warning),
+      meeting: validScore(result.hrScoreMaximums.meeting),
+    } : null,
+  };
+}
 
 function validEvaluationUrl(value: unknown): string | null {
   if (typeof value !== "string" || !value) return null;
