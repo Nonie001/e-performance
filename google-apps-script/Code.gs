@@ -2,6 +2,7 @@ const SPREADSHEET_ID = "1ok23gHD6q8vHtGkrA92XKzoGXNTdXlaR97GYuHR4H54";
 const HR_SPREADSHEET_ID = "1UM2iyWr7qWVyezCVtAiwxXb__O7LRmEirWQd3isb3fo";
 const CREDENTIALS_SHEET = "UserCredentials";
 const HIERARCHY_SHEET = "Hierarchy for evaluate";
+const ROUND_TWO_SCORE_SHEET = "บันทึกการประเมิน";
 
 function doPost(e) {
   try {
@@ -138,11 +139,11 @@ function getSupervisorDashboard(request) {
   }
 
   const reports = [];
+  const supervisorId = normalizeEmployeeId(employeeId);
   if (sheet.getLastRow() >= 2) {
     // A = employee ID, B = direct supervisor (2nd), D:G = identity/work,
     // J = position, Q = legacy evaluation document link.
     const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 17).getDisplayValues();
-    const supervisorId = normalizeEmployeeId(employeeId);
     for (const row of rows) {
       const reportId = String(row[0] || "").trim();
       if (!reportId || normalizeEmployeeId(row[1]) !== supervisorId ||
@@ -160,7 +161,68 @@ function getSupervisorDashboard(request) {
     }
   }
 
-  return jsonResponse({ success: true, isSupervisor: reports.length > 0, reports });
+  let scoreSourceAvailable = false;
+  if (reports.length > 0) {
+    try {
+      const scores = getRoundTwoScores(sheet, supervisorId, reports.map((report) => report.employeeId));
+      if (scores !== null) {
+        scoreSourceAvailable = true;
+        for (const report of reports) {
+          const score = scores[normalizeEmployeeId(report.employeeId)];
+          report.selfEvaluationScore = score ? score.self : null;
+          report.supervisorEvaluationScore = score ? score.supervisor : null;
+        }
+      }
+    } catch (error) {
+      console.error("Round-two score lookup failed", error);
+    }
+  }
+
+  return jsonResponse({ success: true, isSupervisor: reports.length > 0, scoreSourceAvailable, reports });
+}
+
+function getRoundTwoScores(hierarchySheet, supervisorId, reportIds) {
+  // Hierarchy for evaluate: AE = supervisor ID and name, AG = that supervisor's
+  // 2568 round-two spreadsheet. This avoids broad Drive access.
+  const rowCount = hierarchySheet.getLastRow() - 1;
+  const sources = hierarchySheet.getRange(2, 31, rowCount, 3).getDisplayValues();
+  let matchingFileId = null;
+  for (const source of sources) {
+    const id = /^\s*(\d{6})(?:\s|$)/.exec(String(source[0] || ""));
+    if (!id || normalizeEmployeeId(id[1]) !== supervisorId) continue;
+    const url = /^https:\/\/docs\.google\.com\/spreadsheets\/d\/([A-Za-z0-9_-]+)(?:\/|$)/.exec(String(source[2] || "").trim());
+    if (!url || matchingFileId) return null; // Missing or ambiguous source.
+    matchingFileId = url[1];
+  }
+  if (!matchingFileId) return null;
+
+  const sheet = SpreadsheetApp.openById(matchingFileId).getSheetByName(ROUND_TWO_SCORE_SHEET);
+  if (!sheet || sheet.getLastRow() < 2) return null;
+  const headers = sheet.getRange(2, 2, 1, 3).getDisplayValues()[0];
+  if (headers[0] !== "ID" || headers[1] !== "คะแนนประเมินตนเอง" ||
+      headers[2] !== "คะแนนประเมินโดยหัวหน้างาน") return null;
+
+  const wanted = new Set(reportIds.map(normalizeEmployeeId));
+  const results = {};
+  if (sheet.getLastRow() < 3) return results;
+  const count = sheet.getLastRow() - 2;
+  const ids = sheet.getRange(3, 2, count, 1).getDisplayValues();
+  const scores = sheet.getRange(3, 3, count, 2).getValues();
+  const duplicates = new Set();
+  for (let index = 0; index < count; index += 1) {
+    const id = normalizeEmployeeId(ids[index][0]);
+    if (!wanted.has(id)) continue;
+    if (Object.prototype.hasOwnProperty.call(results, id)) {
+      duplicates.add(id);
+      continue;
+    }
+    results[id] = {
+      self: numericScore(scores[index][0]),
+      supervisor: numericScore(scores[index][1]),
+    };
+  }
+  for (const id of duplicates) delete results[id];
+  return results;
 }
 
 function buildPrefilledFormUrl(displayRow, rawRow) {

@@ -23,6 +23,7 @@ type AppsScriptResponse = {
   hrScoreBreakdown?: Partial<Record<"training" | "leave" | "warning" | "meeting" | "health", number | null>> | null;
   hrScoreMaximums?: Partial<Record<"training" | "leave" | "warning" | "meeting", number | null>> | null;
   isSupervisor?: boolean;
+  scoreSourceAvailable?: boolean;
   reports?: unknown;
 };
 
@@ -116,10 +117,13 @@ export type SupervisorReport = {
   project: string;
   position: string;
   evaluationUrl: string | null;
+  selfEvaluationScore: number | null;
+  supervisorEvaluationScore: number | null;
 };
 
 export type SupervisorDashboard = {
   isSupervisor: boolean;
+  scoreSourceAvailable: boolean;
   reports: SupervisorReport[];
 };
 
@@ -157,10 +161,16 @@ export async function getSupervisorDashboard(
       project: row.project as string,
       position: row.position as string,
       evaluationUrl: validEvaluationUrl(row.evaluationUrl),
+      selfEvaluationScore: validScore(row.selfEvaluationScore),
+      supervisorEvaluationScore: validScore(row.supervisorEvaluationScore),
     };
   });
 
-  return { isSupervisor: result.isSupervisor && reports.length > 0, reports };
+  return {
+    isSupervisor: result.isSupervisor && reports.length > 0,
+    scoreSourceAvailable: result.scoreSourceAvailable === true,
+    reports,
+  };
 }
 
 function validScore(value: unknown): number | null {

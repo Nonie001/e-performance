@@ -8,7 +8,7 @@ function workName(value: string) {
   return value.replace(/^[0-9]+\s*:\s*/, "").trim() || "—";
 }
 
-export default function SupervisorTeam({ reports }: { reports: SupervisorReport[] }) {
+export default function SupervisorTeam({ reports, scoreSourceAvailable }: { reports: SupervisorReport[]; scoreSourceAvailable: boolean }) {
   const [query, setQuery] = useState("");
   const visibleReports = useMemo(() => {
     const term = query.trim().toLocaleLowerCase("th");
@@ -25,6 +25,7 @@ export default function SupervisorTeam({ reports }: { reports: SupervisorReport[
         <div>
           <p className={styles.kicker}>สำหรับหัวหน้างาน</p>
           <h2 id="team-heading">พนักงานในความดูแล <span className={styles.count}>{reports.length} คน</span></h2>
+          <p className={styles.subtitle}>ผลประเมินรอบ 2 · ปี 2568</p>
         </div>
         <label className={styles.search}>
           <span className="sr-only">ค้นหาพนักงานในความดูแล</span>
@@ -40,9 +41,15 @@ export default function SupervisorTeam({ reports }: { reports: SupervisorReport[
               <span>รหัส {report.employeeId} · {workName(report.department)}</span>
               <span>{workName(report.project)}{report.position ? ` · ${report.position}` : ""}</span>
             </div>
+            <div className={styles.scores} aria-label={`คะแนนของ ${report.firstName} ${report.lastName}`}>
+              <div><span>ประเมินตนเอง</span><strong>{scoreSourceAvailable ? report.selfEvaluationScore ?? "—" : "—"}</strong></div>
+              <div><span>หัวหน้างานรอบ 2</span><strong>{scoreSourceAvailable ? report.supervisorEvaluationScore ?? "—" : "—"}</strong></div>
+            </div>
             <div className={styles.footer}>
               <div className={styles.status}>
-                <strong>ยังไม่ทราบสถานะ</strong>
+                <strong className={scoreSourceAvailable && report.supervisorEvaluationScore !== null ? styles.complete : undefined}>
+                  {!scoreSourceAvailable ? "โหลดคะแนนไม่ได้" : report.supervisorEvaluationScore !== null ? "ประเมินแล้ว" : "รอคะแนนหัวหน้า"}
+                </strong>
               </div>
               <div className={styles.action}>
                 {report.evaluationUrl ? (
@@ -53,7 +60,9 @@ export default function SupervisorTeam({ reports }: { reports: SupervisorReport[
           </article>
         )) : <p className={styles.empty}>ไม่พบพนักงานที่ตรงกับคำค้นหา</p>}
       </div>
-      <p className={styles.note}>สถานะการส่งแบบประเมินและคะแนนประเมินตนเองยังไม่พร้อมแสดงผล</p>
+      <p className={styles.note}>{scoreSourceAvailable
+        ? "คะแนนจากไฟล์ประเมินรอบ 2 ของหัวหน้างาน ช่องว่างแสดงเป็น — และคะแนน 0 แสดงตามจริง"
+        : "ยังเข้าถึงไฟล์คะแนนรอบ 2 ไม่ได้ กรุณาตรวจสิทธิ์ไฟล์และเวอร์ชัน Apps Script"}</p>
     </section>
   );
 }

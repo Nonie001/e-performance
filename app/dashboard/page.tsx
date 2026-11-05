@@ -142,7 +142,7 @@ export default async function DashboardPage() {
               </div>
             </section>
           </div>
-          {supervisor && <SupervisorTeam reports={supervisor.reports} />}
+          {supervisor && <SupervisorTeam reports={supervisor.reports} scoreSourceAvailable={supervisor.scoreSourceAvailable} />}
         </div>
       </div>
     </main>

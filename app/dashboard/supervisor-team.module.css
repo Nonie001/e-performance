@@ -3,6 +3,7 @@
 .kicker { margin: 0 0 3px; color: #16826c; font-size: .8rem; font-weight: 700; }
 .heading h2 { display: flex; align-items: baseline; gap: 12px; margin: 0; color: #0b2d47; font-size: 1.25rem; font-weight: 700; }
 .count { color: #637f8c; font-size: .88rem; font-weight: 600; white-space: nowrap; }
+.subtitle { margin: 4px 0 0; color: #718793; font-size: .78rem; }
 .search input { width: min(320px, 100%); min-height: 42px; padding: 9px 13px; border: 1px solid #cbdce4; border-radius: 9px; background: #fff; color: #173b52; font: inherit; font-size: .85rem; }
 .search input:focus { outline: 2px solid #73b7cb; outline-offset: 2px; }
 .list { padding: 0 24px; }
@@ -11,10 +12,15 @@
 .person { display: grid; gap: 2px; flex: 1 1 auto; min-width: 0; }
 .person strong { color: #123a52; font-size: .96rem; font-weight: 650; line-height: 1.4; overflow-wrap: anywhere; }
 .person span { color: #6b8390; font-size: .8rem; line-height: 1.35; overflow-wrap: anywhere; }
-.footer { display: flex; align-items: center; justify-content: flex-end; gap: 20px; flex: 0 0 330px; }
-.status { flex: 0 0 125px; }
+.scores { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; flex: 0 0 230px; }
+.scores div { display: grid; gap: 2px; }
+.scores span { color: #6b8390; font-size: .73rem; white-space: nowrap; }
+.scores strong { color: #0e638c; font-size: 1.2rem; line-height: 1.2; }
+.footer { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex: 0 0 290px; }
+.status { flex: 0 0 105px; }
 .status strong { display: inline-block; padding: 6px 9px; border-radius: 7px; color: #946a20; background: #fff5df; font-size: .75rem; font-weight: 700; white-space: nowrap; }
-.action { flex: 0 0 185px; text-align: right; }
+.status strong.complete { color: #13775f; background: #e5f5ee; }
+.action { flex: 0 0 165px; text-align: right; }
 .action a { display: inline-flex; gap: 5px; align-items: center; justify-content: center; min-height: 35px; padding: 7px 11px; border-radius: 8px; color: #fff; background: #0e638c; font-size: .77rem; font-weight: 700; text-decoration: none; }
 .action a:hover { background: #084d70; }
 .action a:focus-visible { outline: 3px solid #0e638c; outline-offset: 3px; }
@@ -25,6 +31,7 @@
   .heading { align-items: stretch; flex-direction: column; gap: 11px; }
   .search input { width: 100%; }
   .row { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .scores { flex: 0 0 auto; width: min(300px, 100%); }
   .footer { justify-content: space-between; flex: 0 0 auto; width: 100%; }
   .status, .action { flex: 0 0 auto; }
 }
