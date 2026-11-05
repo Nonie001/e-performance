@@ -95,11 +95,16 @@ export default async function SupervisorReviewPage({
           </section>
 
           <section className={styles.card} aria-labelledby="self-heading">
-            <p className={styles.source}>ข้อมูลจากไฟล์ประเมินรอบ 2</p>
+            <p className={styles.source}>ข้อมูลการประเมินตนเอง</p>
             <h2 id="self-heading">คะแนนประเมินตนเอง</h2>
+            <p className={styles.submission}>
+              สถานะการส่งแบบประเมิน: <strong>{review.selfSubmission.status === "submitted"
+                ? "ส่งแล้ว" : review.selfSubmission.status === "not_submitted" ? "ยังไม่พบการส่ง" : "ตรวจสอบไม่ได้"}</strong>
+              {review.selfSubmission.formCode && <span> · {review.selfSubmission.formCode}</span>}
+            </p>
             <p className={styles.bigScore}>{score(selfScore)}<span>{selfScore !== null ? " คะแนน" : ""}</span></p>
             {selfScore === null && <p className={styles.missing}>{review.scoreSourceAvailable ? "ยังไม่พบคะแนนประเมินตนเอง" : "ยังโหลดแหล่งคะแนนไม่ได้"}</p>}
-            <p className={styles.note}>คะแนนนี้แสดงตามข้อมูลที่บันทึกในไฟล์รอบ 2 สถานะการส่งแบบประเมินยังไม่ได้เชื่อมเข้าระบบ</p>
+            <p className={styles.note}>สถานะอ้างอิงคำตอบในไฟล์ EF ตามรหัสพนักงาน ส่วนคะแนนอ้างอิงไฟล์ประเมินรอบ 2 ของหัวหน้า</p>
             {report.evaluationUrl && <a className={styles.document} href={report.evaluationUrl} target="_blank" rel="noopener noreferrer">เปิดเอกสารประเมิน ↗</a>}
           </section>
         </div>

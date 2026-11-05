@@ -4,6 +4,7 @@ const CREDENTIALS_SHEET = "UserCredentials";
 const HIERARCHY_SHEET = "Hierarchy for evaluate";
 const ROUND_TWO_SCORE_SHEET = "บันทึกการประเมิน";
 const ROUND_TWO_RECORD_SHEET = "Score record";
+const FORM_RESPONSES_SHEET = "การตอบแบบฟอร์ม 1";
 
 function doPost(e) {
   try {
@@ -138,10 +139,16 @@ function getSupervisorReview(request) {
   if (matches.length !== 1) return jsonResponse({ success: false, message: "Report not found" });
 
   let hrScoreDetails = null;
+  let selfSubmission = { status: "unavailable", formCode: null };
   try {
     hrScoreDetails = getHrScoreDetails(matches[0].employeeId);
   } catch (error) {
     console.error("Supervisor HR score lookup failed", error);
+  }
+  try {
+    selfSubmission = getSelfSubmissionStatus(matches[0].employeeId);
+  } catch (error) {
+    console.error("Self-evaluation submission lookup failed", error);
   }
 
   return jsonResponse({
@@ -153,7 +160,51 @@ function getSupervisorReview(request) {
     hrPastPerformanceScore: hrScoreDetails ? hrScoreDetails.pastPerformanceScore : null,
     hrScoreBreakdown: hrScoreDetails ? hrScoreDetails.breakdown : null,
     hrScoreMaximums: hrScoreDetails ? hrScoreDetails.maximums : null,
+    selfSubmission,
   });
+}
+
+function getSelfSubmissionStatus(employeeId) {
+  // EF source IDs are stored in Script Properties, not in public source code.
+  const configured = PropertiesService.getScriptProperties().getProperty("EF_RESPONSE_SHEETS");
+  if (!configured) return { status: "unavailable", formCode: null };
+  const sources = JSON.parse(configured);
+  if (!sources || typeof sources !== "object" || Array.isArray(sources)) {
+    return { status: "unavailable", formCode: null };
+  }
+
+  const credentials = getCredentialsSheet();
+  const rowCount = credentials.getLastRow() - 1;
+  if (rowCount < 1) return { status: "unavailable", formCode: null };
+  const ids = credentials.getRange(2, 3, rowCount, 1).getDisplayValues();
+  const formCodes = credentials.getRange(2, 19, rowCount, 1).getDisplayValues();
+  let formCode = null;
+  let matches = 0;
+  for (let index = 0; index < rowCount; index += 1) {
+    if (normalizeEmployeeId(ids[index][0]) !== normalizeEmployeeId(employeeId)) continue;
+    matches += 1;
+    formCode = String(formCodes[index][0] || "").trim();
+  }
+  if (matches !== 1 || !/^EF-(0[1-9]|1[0-5])$/.test(formCode || "")) {
+    return { status: "unavailable", formCode: null };
+  }
+
+  const fileId = sources[formCode];
+  if (typeof fileId !== "string" || !/^[A-Za-z0-9_-]{20,}$/.test(fileId)) {
+    return { status: "unavailable", formCode };
+  }
+  const sheet = SpreadsheetApp.openById(fileId).getSheetByName(FORM_RESPONSES_SHEET);
+  if (!sheet) return { status: "unavailable", formCode };
+  const headers = sheet.getRange(1, 1, 1, 3).getDisplayValues()[0];
+  if (headers[0] !== "ประทับเวลา" || headers[2] !== "รหัสพนักงาน") {
+    return { status: "unavailable", formCode };
+  }
+
+  const responseCount = sheet.getLastRow() - 1;
+  if (responseCount < 1) return { status: "not_submitted", formCode };
+  const responseIds = sheet.getRange(2, 3, responseCount, 1).getDisplayValues();
+  const submitted = responseIds.some((row) => normalizeEmployeeId(row[0]) === normalizeEmployeeId(employeeId));
+  return { status: submitted ? "submitted" : "not_submitted", formCode };
 }
 
 function loadSupervisorDashboard(request) {

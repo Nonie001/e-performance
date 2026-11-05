@@ -18,6 +18,8 @@
 .bigScore { margin: 16px 0; color: #0e638c; font-size: 2.5rem; font-weight: 750; line-height: 1.1; }
 .bigScore span { font-size: .94rem; font-weight: 600; }
 .missing, .note, .past { color: #667f8d; font-size: .86rem; line-height: 1.5; }
+.submission { margin: 14px 0 0; color: #627d8b; font-size: .86rem; }
+.submission strong { color: #123a52; }
 .breakdown { margin: 18px 0 0; font-size: .86rem; }
 .document { display: inline-flex; margin-top: 12px; padding: 10px 14px; border-radius: 8px; color: #fff; background: #0e638c; font-size: .85rem; font-weight: 700; text-decoration: none; }
 .document:hover { background: #084d70; }

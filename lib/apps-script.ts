@@ -26,6 +26,7 @@ type AppsScriptResponse = {
   scoreSourceAvailable?: boolean;
   reports?: unknown;
   report?: unknown;
+  selfSubmission?: unknown;
 };
 
 function getConfiguration() {
@@ -136,6 +137,7 @@ export type SupervisorReview = {
   hrPastPerformanceScore: number | null;
   hrScoreBreakdown: EmployeeProfile["hrScoreBreakdown"];
   hrScoreMaximums: EmployeeProfile["hrScoreMaximums"];
+  selfSubmission: { status: "submitted" | "not_submitted" | "unavailable"; formCode: string | null };
 };
 
 function normalizeEmployeeId(value: string) {
@@ -159,6 +161,10 @@ export async function getSupervisorReview(
   ) || normalizeEmployeeId(row.employeeId as string) !== normalizeEmployeeId(targetEmployeeId)) {
     throw new AppsScriptRequestError("ข้อมูลพนักงานไม่ถูกต้อง");
   }
+  const submission = result.selfSubmission && typeof result.selfSubmission === "object"
+    ? result.selfSubmission as Record<string, unknown> : {};
+  const status = submission.status === "submitted" || submission.status === "not_submitted"
+    ? submission.status : "unavailable";
 
   return {
     report: {
@@ -189,6 +195,11 @@ export async function getSupervisorReview(
       warning: validScore(result.hrScoreMaximums.warning),
       meeting: validScore(result.hrScoreMaximums.meeting),
     } : null,
+    selfSubmission: {
+      status,
+      formCode: typeof submission.formCode === "string" && /^EF-(0[1-9]|1[0-5])$/.test(submission.formCode)
+        ? submission.formCode : null,
+    },
   };
 }
 
